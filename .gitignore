@@ -1,0 +1,10 @@
+node_modules
+.turbo
+.DS_Store
+bun.lock
+.expo
+dist
+coverage
+apps/mobile/.expo
+apps/mobile/dist
+apps/mobile/web-build
