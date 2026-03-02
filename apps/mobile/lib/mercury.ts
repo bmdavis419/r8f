@@ -1,10 +1,4 @@
-import { apiUrl } from "@/lib/api";
-
-type ApiErrorResponse = {
-  error?: {
-    message?: string;
-  };
-};
+import { fetchApiJson } from "@/lib/api";
 
 type ProfileRef = {
   id: string;
@@ -155,20 +149,6 @@ export type MercuryInvoicesResponse = {
   };
 };
 
-const getErrorMessage = (payload: ApiErrorResponse, status: number) =>
-  payload.error?.message ?? `API request failed with status ${status}.`;
-
-const fetchJson = async <T>(path: string) => {
-  const response = await fetch(`${apiUrl}${path}`);
-  const payload = (await response.json()) as T & ApiErrorResponse;
-
-  if (!response.ok) {
-    throw new Error(getErrorMessage(payload, response.status));
-  }
-
-  return payload as T;
-};
-
 const buildQuery = (params: Record<string, string | undefined>) => {
   const searchParams = new URLSearchParams();
 
@@ -185,13 +165,13 @@ const buildQuery = (params: Record<string, string | undefined>) => {
 
 export const mercuryApi = {
   getInvoices: () =>
-    fetchJson<MercuryInvoicesResponse>(
+    fetchApiJson<MercuryInvoicesResponse>(
       "/api/mercury/invoices?limit=40&order=desc",
     ),
   getOverview: () =>
-    fetchJson<MercuryOverviewResponse>("/api/mercury/overview"),
+    fetchApiJson<MercuryOverviewResponse>("/api/mercury/overview"),
   getTransactions: ({ limit = 120 }: { limit?: number } = {}) =>
-    fetchJson<MercuryTransactionsResponse>(
+    fetchApiJson<MercuryTransactionsResponse>(
       `/api/mercury/transactions${buildQuery({
         limit: limit.toString(),
         order: "desc",

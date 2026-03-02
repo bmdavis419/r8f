@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { PasscodeLockButton } from "@/lib/passcode";
 import { getTopBarOptions } from "@/lib/theme";
 
 export default function DashboardLayout() {
@@ -8,7 +9,13 @@ export default function DashboardLayout() {
 
   return (
     <Stack screenOptions={getTopBarOptions(colorScheme)}>
-      <Stack.Screen name="index" options={{ title: "Overview" }} />
+      <Stack.Screen
+        name="index"
+        options={{
+          headerRight: () => <PasscodeLockButton />,
+          title: "Overview",
+        }}
+      />
     </Stack>
   );
 }

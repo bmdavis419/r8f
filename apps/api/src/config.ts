@@ -11,6 +11,7 @@ const booleanish = z
   .transform((value) => value === "true" || value === "1");
 
 const baseEnvSchema = z.object({
+  APP_PASSCODE: z.string().min(1),
   MERCURY_API_BASE_URL: z.url().optional(),
   MERCURY_API_TOKEN: z.string().min(1).optional(),
   MERCURY_PROFILE_IDS: z.string().optional(),
@@ -100,6 +101,7 @@ const profiles =
   configuredProfiles.length > 0 ? configuredProfiles : legacyProfile;
 
 export const config = {
+  appPasscode: env.APP_PASSCODE,
   mercury: {
     profiles,
     requestTimeoutMs: env.MERCURY_REQUEST_TIMEOUT_MS,

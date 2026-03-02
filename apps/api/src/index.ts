@@ -64,6 +64,8 @@ const invoicesQuerySchema = profileQuerySchema.extend({
   status: z.string().optional(),
 });
 
+const passcodeHeaderName = "x-r8f-passcode";
+
 type ApiStatus =
   | 400
   | 401
@@ -268,7 +270,33 @@ const sortByNewest = <
 
 export const app = new Hono();
 
-app.use("/api/*", cors());
+app.use(
+  "/api/*",
+  cors({
+    allowHeaders: ["Content-Type", passcodeHeaderName],
+    origin: "*",
+  }),
+);
+
+app.use("/api/*", async (c, next) => {
+  if (c.req.method === "OPTIONS") {
+    return next();
+  }
+
+  if (c.req.header(passcodeHeaderName) !== config.appPasscode) {
+    return c.json(
+      {
+        error: {
+          code: "invalid_passcode",
+          message: "A valid app passcode is required.",
+        },
+      },
+      401,
+    );
+  }
+
+  return next();
+});
 
 app.get("/", (c) => {
   return c.json({

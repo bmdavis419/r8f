@@ -159,17 +159,6 @@ export default function ActivityScreen() {
       }
       ListHeaderComponent={
         <>
-          <View style={[styles.card, styles.heroCard]}>
-            <Text style={styles.eyebrow}>Recent activity</Text>
-            <Text style={styles.heroTitle}>
-              Money movement across all profiles.
-            </Text>
-            <Text style={styles.copy}>
-              A simple running list of the latest Mercury transactions, ordered
-              newest first.
-            </Text>
-          </View>
-
           <View style={[styles.card, styles.filterCard]}>
             <Text style={styles.filterEyebrow}>Filters</Text>
             <FilterChips
@@ -347,27 +336,11 @@ const getStyles = (colors: ReturnType<typeof getAppColors>) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
-    heroCard: {
-      backgroundColor: colors.cardAlt,
-    },
     noticeCard: {
       borderColor: colors.danger,
     },
     filterCard: {
       gap: 14,
-    },
-    eyebrow: {
-      color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1.6,
-      textTransform: "uppercase",
-    },
-    heroTitle: {
-      color: colors.text,
-      fontSize: 28,
-      fontWeight: "700",
-      lineHeight: 32,
     },
     filterEyebrow: {
       color: colors.meta,
