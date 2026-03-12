@@ -25,36 +25,30 @@ export default function TabLayout() {
       labelStyle={{ color: liquidGlassTextColor }}
       tintColor={liquidGlassTextColor}
     >
-      <NativeTabs.Trigger
-        name="dashboard"
-        contentStyle={{ backgroundColor: colors.canvas }}
-      >
+      <NativeTabs.Trigger name="dashboard">
         <NativeTabs.Trigger.Icon
           sf={{ default: "chart.bar", selected: "chart.bar.fill" }}
-          md="home"
         />
         <NativeTabs.Trigger.Label>Overview</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger
-        name="activity"
-        contentStyle={{ backgroundColor: colors.canvas }}
-      >
+      <NativeTabs.Trigger name="activity">
         <NativeTabs.Trigger.Icon
           sf={{
             default: "list.bullet.rectangle",
             selected: "list.bullet.rectangle.fill",
           }}
-          md="article"
         />
         <NativeTabs.Trigger.Label>Activity</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger
-        name="invoices"
-        contentStyle={{ backgroundColor: colors.canvas }}
-      >
+      <NativeTabs.Trigger name="cards">
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "creditcard", selected: "creditcard.fill" }}
+        />
+        <NativeTabs.Trigger.Label>Cards</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="invoices">
         <NativeTabs.Trigger.Icon
           sf={{ default: "doc.text", selected: "doc.text.fill" }}
-          md="receipt_long"
         />
         <NativeTabs.Trigger.Label>Invoices</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -38,29 +38,27 @@ export default function ActivityScreen() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedDirection, setSelectedDirection] = useState("all");
 
-  const loadTransactions = useEffectEvent(
-    async (mode: "initial" | "refresh") => {
-      try {
-        setError(null);
-        if (mode === "refresh") {
-          setIsRefreshing(true);
-        } else {
-          setIsLoading(true);
-        }
-        setVisibleCount(pageSize);
-        setData(await mercuryApi.getTransactions({ limit: fetchLimit }));
-      } catch (loadError) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Unable to load activity.",
-        );
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+  const loadTransactions = useCallback(async (mode: "initial" | "refresh") => {
+    try {
+      setError(null);
+      if (mode === "refresh") {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
       }
-    },
-  );
+      setVisibleCount(pageSize);
+      setData(await mercuryApi.getTransactions({ limit: fetchLimit }));
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load activity.",
+      );
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadTransactions("initial");
