@@ -8,7 +8,6 @@ import {
   View,
 } from "react-native";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
   type MercuryCreditAccount,
@@ -16,7 +15,10 @@ import {
   type MercuryOverviewResponse,
   mercuryApi,
 } from "@/lib/mercury";
-import { getAppColors } from "@/lib/theme";
+import { appColors } from "@/lib/theme";
+
+const colors = appColors.dark;
+const styles = getStyles();
 
 const loadOverview = () => mercuryApi.getOverview();
 
@@ -27,9 +29,6 @@ type CardItem = {
 };
 
 export default function CardsScreen() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
   const [data, setData] = useState<MercuryOverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(true);
@@ -85,113 +84,95 @@ export default function CardsScreen() {
         <RefreshControl
           onRefresh={() => void refresh()}
           refreshing={isRefreshing}
+          tintColor={colors.accent}
         />
       }
       showsVerticalScrollIndicator={false}
       style={styles.screen}
     >
-      <View style={[styles.card, styles.heroCard]}>
-        <Text style={styles.eyebrow}>Cards</Text>
-        <Text style={styles.heroTitle}>
-          Mercury credit balances, with Apple Card waiting on FinanceKit.
-        </Text>
-        <View style={styles.metricRow}>
-          <View style={[styles.metricTile, styles.metricTileSoft]}>
-            <Text style={styles.metricLabel}>Mercury current</Text>
-            <Text style={styles.metricValue}>
+      {/* Summary */}
+      <View style={styles.section}>
+        <View style={styles.statRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Current balance</Text>
+            <Text style={styles.statValue}>
               {formatCurrency(summary?.creditCurrent)}
             </Text>
           </View>
-          <View style={styles.metricTile}>
-            <Text style={styles.metricLabel}>Mercury available</Text>
-            <Text style={styles.metricValue}>
+          <View style={styles.statSeparator} />
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Available</Text>
+            <Text style={styles.statValue}>
               {formatCurrency(summary?.creditAvailable)}
             </Text>
           </View>
         </View>
-        <Text style={styles.meta}>
+        <Text style={styles.footnote}>
           Updated {formatDateTime(data?.meta.asOf ?? null)}
         </Text>
       </View>
 
       {error ? (
-        <View style={[styles.card, styles.noticeCard]}>
-          <Text style={styles.cardTitle}>Unable to load cards</Text>
-          <Text style={styles.copy}>{error}</Text>
+        <View style={styles.section}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
-      <View style={[styles.card, styles.appleCard]}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.appleTitle}>Apple Card</Text>
-          <View style={styles.appleBadge}>
-            <Text style={styles.appleBadgeLabel}>Blocked in dev</Text>
-          </View>
+      {/* Apple Card note */}
+      <View style={styles.section}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.sectionTitle}>Apple Card</Text>
+          <Text style={styles.badge}>Unavailable</Text>
         </View>
-        <Text style={styles.appleAmount}>Unavailable</Text>
-        <Text style={styles.appleCopy}>
-          Real Apple Card data cannot load here yet. FinanceKit needs a native
-          iPhone build and Apple-granted entitlement for this bundle ID before
-          the app can read Apple Card history or balances.
-        </Text>
-        <Text style={styles.appleMeta}>
+        <Text style={styles.footnote}>
           {Platform.OS === "ios"
-            ? "iOS can host this later through a custom native module."
-            : "Apple Card support will remain iPhone-only even after integration."}
+            ? "Requires a production build with FinanceKit entitlement."
+            : "Apple Card data is iPhone-only via FinanceKit."}
         </Text>
       </View>
 
+      {/* Mercury cards */}
       {mercuryCards.length > 0 ? (
-        mercuryCards.map(({ account, organizationName, profile }) => (
-          <View
-            key={account.id ?? `${profile.id}-${account.createdAt}`}
-            style={styles.card}
-          >
-            <View style={styles.cardHeader}>
-              <View style={styles.rowCopy}>
-                <Text style={styles.cardTitle}>Mercury Card</Text>
-                <Text style={styles.copy}>
-                  {profile.label}
-                  {organizationName ? ` · ${organizationName}` : ""}
-                </Text>
-              </View>
-              <Text style={styles.status}>{account.status ?? "Active"}</Text>
-            </View>
-            <View style={styles.metricRow}>
-              <View style={styles.metricTile}>
-                <Text style={styles.metricLabel}>Current</Text>
-                <Text style={styles.metricValue}>
-                  {formatCurrency(account.balances.current)}
-                </Text>
-              </View>
-              <View style={styles.metricTile}>
-                <Text style={styles.metricLabel}>Available</Text>
-                <Text style={styles.metricValue}>
-                  {formatCurrency(account.balances.available)}
-                </Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mercury</Text>
+          {mercuryCards.map(({ account, organizationName, profile }, index) => (
+            <View key={account.id ?? `${profile.id}-${account.createdAt}`}>
+              {index > 0 ? <View style={styles.rowDivider} /> : null}
+              <View style={styles.cardRow}>
+                <View style={styles.cardRowLeft}>
+                  <Text style={styles.rowTitle}>Mercury Card</Text>
+                  <Text style={styles.rowSubtitle}>
+                    {profile.label}
+                    {organizationName ? ` · ${organizationName}` : ""}
+                  </Text>
+                </View>
+                <View style={styles.cardRowRight}>
+                  <Text style={styles.rowValue}>
+                    {formatCurrency(account.balances.current)}
+                  </Text>
+                  <Text style={styles.rowSubtitle}>
+                    {formatCurrency(account.balances.available)} avail.
+                  </Text>
+                </View>
               </View>
             </View>
-            <Text style={styles.meta}>
-              Opened {formatDateTime(account.createdAt)}
-            </Text>
-          </View>
-        ))
+          ))}
+        </View>
       ) : (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>No Mercury cards yet</Text>
-          <Text style={styles.copy}>
-            This workspace is connected, but none of the current Mercury
-            profiles returned a credit account.
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mercury</Text>
+          <Text style={styles.footnote}>
+            No Mercury credit accounts found across connected profiles.
           </Text>
         </View>
       )}
 
       {unsupportedProfiles.map((profile) => (
-        <View key={profile.profile.id} style={styles.card}>
-          <Text style={styles.cardTitle}>{profile.profile.label}</Text>
-          <Text style={styles.copy}>
+        <View key={profile.profile.id} style={styles.section}>
+          <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
+          <Text style={styles.footnote}>
             {profile.capabilities.credit.error?.message ??
-              "Credit data is not enabled for this Mercury profile."}
+              "Credit data is not enabled for this profile."}
           </Text>
         </View>
       ))}
@@ -199,139 +180,104 @@ export default function CardsScreen() {
   );
 }
 
-const getStyles = (colors: ReturnType<typeof getAppColors>) =>
-  StyleSheet.create({
+function getStyles() {
+  return StyleSheet.create({
     screen: {
       backgroundColor: colors.canvas,
     },
     content: {
-      gap: 16,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 28,
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 32,
     },
-    card: {
-      gap: 14,
-      padding: 18,
-      borderRadius: 24,
+    section: {
+      gap: 12,
+      padding: 16,
+      borderRadius: 12,
       backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
-    heroCard: {
-      backgroundColor: colors.cardAlt,
-    },
-    noticeCard: {
-      borderColor: colors.danger,
-    },
-    appleCard: {
-      backgroundColor: colors.text,
-      borderColor: colors.text,
-    },
-    eyebrow: {
-      color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1.6,
-      textTransform: "uppercase",
-    },
-    heroTitle: {
+    sectionTitle: {
       color: colors.text,
-      fontSize: 28,
-      fontWeight: "700",
-      lineHeight: 32,
+      fontSize: 17,
+      fontWeight: "600",
     },
-    cardHeader: {
+    rowBetween: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
     },
-    rowCopy: {
-      flex: 1,
-      gap: 4,
-    },
-    cardTitle: {
-      color: colors.text,
-      fontSize: 22,
-      fontWeight: "700",
-    },
-    appleTitle: {
-      color: colors.canvas,
-      fontSize: 22,
-      fontWeight: "700",
-    },
-    copy: {
+    badge: {
       color: colors.meta,
-      fontSize: 15,
-      lineHeight: 22,
-    },
-    appleCopy: {
-      color: "rgba(243, 241, 234, 0.82)",
-      fontSize: 15,
-      lineHeight: 22,
-    },
-    appleAmount: {
-      color: colors.canvas,
-      fontSize: 30,
-      fontWeight: "700",
-      letterSpacing: -0.5,
-    },
-    appleMeta: {
-      color: "rgba(243, 241, 234, 0.62)",
       fontSize: 13,
-      lineHeight: 18,
+      fontWeight: "500",
     },
-    appleBadge: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: "rgba(255,255,255,0.12)",
-    },
-    appleBadgeLabel: {
-      color: colors.canvas,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 0.4,
-      textTransform: "uppercase",
-    },
-    metricRow: {
+    statRow: {
       flexDirection: "row",
-      gap: 12,
+      alignItems: "center",
     },
-    metricTile: {
+    stat: {
       flex: 1,
-      gap: 6,
-      padding: 14,
-      borderRadius: 18,
-      backgroundColor: colors.canvas,
-      borderWidth: 1,
-      borderColor: colors.border,
+      gap: 2,
     },
-    metricTileSoft: {
-      backgroundColor: colors.card,
+    statSeparator: {
+      width: 1,
+      height: 28,
+      backgroundColor: colors.border,
+      marginHorizontal: 16,
     },
-    metricLabel: {
+    statLabel: {
       color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 0.8,
-      textTransform: "uppercase",
+      fontSize: 13,
+      fontWeight: "500",
     },
-    metricValue: {
+    statValue: {
       color: colors.text,
       fontSize: 20,
-      fontWeight: "700",
+      fontWeight: "600",
     },
-    status: {
-      color: colors.accent,
+    cardRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    cardRowLeft: {
+      flex: 1,
+      gap: 1,
+    },
+    cardRowRight: {
+      alignItems: "flex-end",
+      gap: 1,
+    },
+    rowTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    rowSubtitle: {
+      color: colors.meta,
       fontSize: 13,
-      fontWeight: "700",
-      textTransform: "capitalize",
     },
-    meta: {
+    rowValue: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
+    },
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+    },
+    footnote: {
       color: colors.meta,
       fontSize: 13,
       lineHeight: 18,
     },
+    errorText: {
+      color: colors.danger,
+      fontSize: 15,
+    },
   });
+}

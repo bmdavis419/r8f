@@ -7,17 +7,16 @@ import {
   View,
 } from "react-native";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
 import { type MercuryInvoicesResponse, mercuryApi } from "@/lib/mercury";
-import { getAppColors } from "@/lib/theme";
+import { appColors } from "@/lib/theme";
+
+const colors = appColors.dark;
+const styles = getStyles();
 
 const loadInvoices = () => mercuryApi.getInvoices();
 
 export default function InvoicesScreen() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
   const [data, setData] = useState<MercuryInvoicesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(true);
@@ -53,162 +52,140 @@ export default function InvoicesScreen() {
         <RefreshControl
           onRefresh={() => void refresh()}
           refreshing={isRefreshing}
+          tintColor={colors.accent}
         />
       }
       showsVerticalScrollIndicator={false}
       style={styles.screen}
     >
-      <View style={[styles.card, styles.heroCard]}>
-        <Text style={styles.eyebrow}>Invoices</Text>
-        <Text style={styles.heroTitle}>
-          Receivables, when the profile supports them.
-        </Text>
-        <Text style={styles.copy}>
-          The API already distinguishes between supported and unsupported
-          Mercury profiles, so this stays clean even before invoices are
-          enabled.
-        </Text>
-      </View>
-
       {error ? (
-        <View style={[styles.card, styles.noticeCard]}>
-          <Text style={styles.cardTitle}>Unable to load invoices</Text>
-          <Text style={styles.copy}>{error}</Text>
+        <View style={styles.section}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
-      {items.length > 0
-        ? items.map((invoice) => (
-            <View key={invoice.id ?? invoice.invoiceNumber} style={styles.card}>
+      {items.length > 0 ? (
+        <View style={styles.section}>
+          {items.map((invoice, index) => (
+            <View key={invoice.id ?? invoice.invoiceNumber}>
+              {index > 0 ? <View style={styles.rowDivider} /> : null}
               <View style={styles.row}>
-                <View style={styles.rowCopy}>
-                  <Text style={styles.itemTitle}>
+                <View style={styles.rowLeft}>
+                  <Text style={styles.rowTitle}>
                     {invoice.customer?.name ?? invoice.profile.label}
                   </Text>
-                  <Text style={styles.itemMeta}>
+                  <Text style={styles.rowSubtitle}>
                     #{invoice.invoiceNumber ?? "—"} · Due{" "}
                     {formatDate(invoice.dueDate)}
                   </Text>
                 </View>
-                <Text style={styles.amount}>
-                  {formatCurrency(invoice.amount)}
-                </Text>
+                <View style={styles.rowRight}>
+                  <Text style={styles.rowValue}>
+                    {formatCurrency(invoice.amount)}
+                  </Text>
+                  <Text style={styles.rowStatus}>
+                    {titleCase(invoice.status)}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailText}>{invoice.profile.label}</Text>
-                <Text style={styles.detailText}>
-                  {titleCase(invoice.status)}
-                </Text>
-              </View>
-            </View>
-          ))
-        : data?.data.profiles.map((profile) => (
-            <View key={profile.profile.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{profile.profile.label}</Text>
-              <Text style={styles.copy}>
-                {profile.invoices.supported
-                  ? "Invoices are enabled, but nothing is currently outstanding."
-                  : (profile.invoices.error?.message ??
-                    "Invoices are not available for this profile.")}
-              </Text>
             </View>
           ))}
+        </View>
+      ) : (
+        data?.data.profiles.map((profile) => (
+          <View key={profile.profile.id} style={styles.section}>
+            <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
+            <Text style={styles.footnote}>
+              {profile.invoices.supported
+                ? "No outstanding invoices."
+                : (profile.invoices.error?.message ??
+                  "Invoices are not available for this profile.")}
+            </Text>
+          </View>
+        ))
+      )}
 
       {data?.meta.note ? (
-        <Text style={styles.footer}>{data.meta.note}</Text>
+        <Text style={styles.footerNote}>{data.meta.note}</Text>
       ) : null}
     </ScrollView>
   );
 }
 
-const getStyles = (colors: ReturnType<typeof getAppColors>) =>
-  StyleSheet.create({
+function getStyles() {
+  return StyleSheet.create({
     screen: {
       backgroundColor: colors.canvas,
     },
     content: {
-      gap: 14,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 28,
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 32,
     },
-    card: {
-      gap: 10,
-      padding: 18,
-      borderRadius: 24,
+    section: {
+      gap: 12,
+      padding: 16,
+      borderRadius: 12,
       backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
-    heroCard: {
-      backgroundColor: colors.cardAlt,
-    },
-    noticeCard: {
-      borderColor: colors.danger,
-    },
-    eyebrow: {
-      color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1.6,
-      textTransform: "uppercase",
-    },
-    heroTitle: {
+    sectionTitle: {
       color: colors.text,
-      fontSize: 28,
-      fontWeight: "700",
-      lineHeight: 32,
-    },
-    cardTitle: {
-      color: colors.text,
-      fontSize: 20,
-      fontWeight: "700",
-    },
-    copy: {
-      color: colors.meta,
-      fontSize: 15,
-      lineHeight: 22,
+      fontSize: 17,
+      fontWeight: "600",
     },
     row: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
+      paddingVertical: 2,
     },
-    rowCopy: {
+    rowLeft: {
       flex: 1,
-      gap: 4,
+      gap: 1,
     },
-    itemTitle: {
+    rowRight: {
+      alignItems: "flex-end",
+      gap: 1,
+    },
+    rowTitle: {
       color: colors.text,
-      fontSize: 16,
-      fontWeight: "700",
+      fontSize: 15,
+      fontWeight: "500",
     },
-    itemMeta: {
+    rowSubtitle: {
+      color: colors.meta,
+      fontSize: 13,
+    },
+    rowValue: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
+    },
+    rowStatus: {
+      color: colors.meta,
+      fontSize: 12,
+    },
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+    },
+    footnote: {
       color: colors.meta,
       fontSize: 13,
       lineHeight: 18,
     },
-    amount: {
-      color: colors.text,
-      fontSize: 16,
-      fontWeight: "700",
-    },
-    detailRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
-    },
-    detailText: {
-      color: colors.meta,
-      fontSize: 13,
-      lineHeight: 18,
-    },
-    footer: {
+    footerNote: {
       color: colors.meta,
       fontSize: 13,
       lineHeight: 18,
       paddingHorizontal: 4,
     },
+    errorText: {
+      color: colors.danger,
+      fontSize: 15,
+    },
   });
+}

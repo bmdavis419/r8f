@@ -3,7 +3,6 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   PasscodeBootScreen,
   PasscodeGate,
@@ -31,13 +30,11 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <PasscodeProvider>
-      <ThemeProvider value={getNavigationTheme(colorScheme)}>
+      <ThemeProvider value={getNavigationTheme()}>
         <RootNavigator />
-        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+        <StatusBar style="light" />
       </ThemeProvider>
     </PasscodeProvider>
   );

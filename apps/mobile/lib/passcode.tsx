@@ -1,18 +1,19 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import type { ReactNode } from "react";
 import { Feather } from "@expo/vector-icons";
 import * as SecureStore from "expo-secure-store";
+import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   ApiUnauthorizedError,
   onApiUnauthorized,
   setApiPasscode,
   verifyApiPasscode,
 } from "@/lib/api";
-import { getAppColors } from "@/lib/theme";
+import { appColors } from "@/lib/theme";
+
+const colors = appColors.dark;
 
 const PasscodeContext = createContext<{
   clearError: () => void;
@@ -196,22 +197,15 @@ export const usePasscode = () => {
 };
 
 export function PasscodeGate() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
   const { clearError, error, isSubmitting, unlock } = usePasscode();
   const [value, setValue] = useState("");
 
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.eyebrow}>Protected</Text>
-          <Text style={styles.title}>Enter passcode to open r8f.</Text>
-          <Text style={styles.copy}>
-            This app now requires the shared server passcode before loading any
-            Mercury data.
-          </Text>
+        <View style={styles.content}>
+          <Text style={styles.title}>r8f</Text>
+          <Text style={styles.subtitle}>Enter passcode to continue</Text>
 
           <TextInput
             autoCapitalize="none"
@@ -221,7 +215,6 @@ export function PasscodeGate() {
               if (error) {
                 clearError();
               }
-
               setValue(nextValue);
             }}
             onSubmitEditing={() => void unlock(value)}
@@ -247,7 +240,7 @@ export function PasscodeGate() {
             ]}
           >
             <Text style={styles.buttonText}>
-              {isSubmitting ? "Checking..." : "Unlock app"}
+              {isSubmitting ? "Checking..." : "Unlock"}
             </Text>
           </Pressable>
         </View>
@@ -257,19 +250,12 @@ export function PasscodeGate() {
 }
 
 export function PasscodeBootScreen() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
-
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.eyebrow}>Protected</Text>
-          <Text style={styles.title}>Checking saved passcode.</Text>
-          <Text style={styles.copy}>
-            Reconnecting to the API before opening the app.
-          </Text>
+        <View style={styles.content}>
+          <Text style={styles.title}>r8f</Text>
+          <Text style={styles.subtitle}>Reconnecting...</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -277,8 +263,6 @@ export function PasscodeBootScreen() {
 }
 
 export function PasscodeLockButton() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
   const { lock } = usePasscode();
 
   return (
@@ -291,96 +275,73 @@ export function PasscodeLockButton() {
         alignItems: "center",
         flexDirection: "row",
         gap: 6,
-        opacity: pressed ? 0.72 : 1,
+        opacity: pressed ? 0.6 : 1,
         paddingHorizontal: 4,
         paddingVertical: 2,
       })}
     >
-      <Feather color={colors.text} name="lock" size={18} />
-      <Text
-        style={{
-          color: colors.text,
-          fontSize: 14,
-          fontWeight: "600",
-        }}
-      >
-        Lock
-      </Text>
+      <Feather color={colors.accent} name="lock" size={16} />
     </Pressable>
   );
 }
 
-const getStyles = (colors: ReturnType<typeof getAppColors>) =>
-  StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: colors.canvas,
-    },
-    container: {
-      flex: 1,
-      justifyContent: "center",
-      paddingHorizontal: 24,
-      paddingVertical: 32,
-    },
-    card: {
-      gap: 16,
-      padding: 24,
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
-    },
-    eyebrow: {
-      color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
-    title: {
-      color: colors.text,
-      fontSize: 30,
-      fontWeight: "700",
-      lineHeight: 34,
-    },
-    copy: {
-      color: colors.meta,
-      fontSize: 16,
-      lineHeight: 24,
-    },
-    input: {
-      minHeight: 54,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.canvas,
-      color: colors.text,
-      fontSize: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-    },
-    error: {
-      color: colors.danger,
-      fontSize: 14,
-      lineHeight: 20,
-    },
-    button: {
-      minHeight: 52,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 999,
-      backgroundColor: colors.accent,
-      paddingHorizontal: 18,
-    },
-    buttonDisabled: {
-      opacity: 0.72,
-    },
-    buttonPressed: {
-      opacity: 0.84,
-    },
-    buttonText: {
-      color: colors.canvas,
-      fontSize: 16,
-      fontWeight: "700",
-    },
-  });
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.canvas,
+  },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  content: {
+    gap: 16,
+    alignItems: "stretch",
+  },
+  title: {
+    color: colors.text,
+    fontSize: 32,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    color: colors.meta,
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  input: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    color: colors.text,
+    fontSize: 17,
+    paddingHorizontal: 16,
+  },
+  error: {
+    color: colors.danger,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  button: {
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: colors.accent,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonPressed: {
+    opacity: 0.8,
+  },
+  buttonText: {
+    color: "#000000",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+});

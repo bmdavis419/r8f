@@ -1,15 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
 import { FlashList } from "@shopify/flash-list";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { formatCurrency, formatDateTime, titleCase } from "@/lib/format";
 import {
   type MercuryTransaction,
   type MercuryTransactionsResponse,
   mercuryApi,
 } from "@/lib/mercury";
-import { getAppColors } from "@/lib/theme";
+import { appColors } from "@/lib/theme";
+
+const colors = appColors.dark;
+const styles = getStyles();
 
 const fetchLimit = 120;
 const pageSize = 24;
@@ -26,9 +35,6 @@ const directionOptions = [
 ] as const;
 
 export default function ActivityScreen() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
   const [data, setData] = useState<MercuryTransactionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,15 +84,12 @@ export default function ActivityScreen() {
     if (selectedProfile !== "all" && item.profile.id !== selectedProfile) {
       return false;
     }
-
     if (selectedStatus !== "all" && item.status !== selectedStatus) {
       return false;
     }
-
     if (selectedDirection !== "all" && item.direction !== selectedDirection) {
       return false;
     }
-
     return true;
   });
   const visibleItems = filteredItems.slice(0, visibleCount);
@@ -99,13 +102,14 @@ export default function ActivityScreen() {
   return (
     <FlashList
       automaticallyAdjustContentInsets
-      contentContainerStyle={[
-        styles.content,
-        visibleItems.length === 0 && styles.contentEmpty,
-      ]}
+      contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       data={visibleItems}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ItemSeparatorComponent={() => (
+        <View style={styles.separatorWrapper}>
+          <View style={styles.separator} />
+        </View>
+      )}
       keyExtractor={(item, index) =>
         item.id ??
         [
@@ -120,17 +124,14 @@ export default function ActivityScreen() {
       keyboardDismissMode="on-drag"
       ListEmptyComponent={
         error ? null : isLoading ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Loading activity</Text>
-            <Text style={styles.copy}>
-              Pulling your latest Mercury transactions now.
-            </Text>
+          <View style={styles.emptySection}>
+            <Text style={styles.emptyTitle}>Loading activity...</Text>
           </View>
         ) : (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>No activity yet</Text>
-            <Text style={styles.copy}>
-              Recent Mercury transactions will show up here once they settle.
+          <View style={styles.emptySection}>
+            <Text style={styles.emptyTitle}>No activity yet</Text>
+            <Text style={styles.emptyBody}>
+              Recent transactions will appear here.
             </Text>
           </View>
         )
@@ -139,17 +140,12 @@ export default function ActivityScreen() {
         !error && filteredItems.length > 0 ? (
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Showing {visibleItems.length} of {filteredItems.length} recent
-              transactions
+              {visibleItems.length} of {filteredItems.length}
+              {filteredItems.length !== items.length
+                ? ` (${items.length} total)`
+                : ""}
             </Text>
-            {filteredItems.length !== items.length ? (
-              <Text style={styles.footerSubtle}>
-                Filtered from {items.length} loaded transactions
-              </Text>
-            ) : null}
-            {isLoading ? (
-              <Text style={styles.footerHint}>Loading</Text>
-            ) : canLoadMore ? (
+            {canLoadMore ? (
               <Text style={styles.footerHint}>Scroll for more</Text>
             ) : null}
           </View>
@@ -157,21 +153,23 @@ export default function ActivityScreen() {
       }
       ListHeaderComponent={
         <>
-          <View style={[styles.card, styles.filterCard]}>
-            <Text style={styles.filterEyebrow}>Filters</Text>
-            <FilterChips
+          {/* Filters */}
+          <View style={styles.filterSection}>
+            <FilterRow
               label="Profile"
               onSelect={setSelectedProfile}
               options={profileOptions}
               selectedValue={selectedProfile}
             />
-            <FilterChips
+            <View style={styles.filterSeparator} />
+            <FilterRow
               label="Status"
               onSelect={setSelectedStatus}
               options={statusOptions}
               selectedValue={selectedStatus}
             />
-            <FilterChips
+            <View style={styles.filterSeparator} />
+            <FilterRow
               label="Direction"
               onSelect={setSelectedDirection}
               options={directionOptions}
@@ -180,9 +178,8 @@ export default function ActivityScreen() {
           </View>
 
           {error ? (
-            <View style={[styles.card, styles.noticeCard]}>
-              <Text style={styles.cardTitle}>Unable to load activity</Text>
-              <Text style={styles.copy}>{error}</Text>
+            <View style={styles.errorSection}>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
         </>
@@ -209,7 +206,7 @@ export default function ActivityScreen() {
   );
 }
 
-function FilterChips({
+function FilterRow({
   label,
   onSelect,
   options,
@@ -220,56 +217,43 @@ function FilterChips({
   options: readonly { label: string; value: string }[];
   selectedValue: string;
 }) {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
-
   return (
-    <View style={styles.filterGroup}>
+    <View style={styles.filterRow}>
       <Text style={styles.filterLabel}>{label}</Text>
-      <View style={styles.filterOptions}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+      >
         {options.map((option) => {
-          const isSelected = option.value === selectedValue;
-
+          const active = option.value === selectedValue;
           return (
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
+              accessibilityState={{ selected: active }}
               key={`${label}-${option.value}`}
               onPress={() => onSelect(option.value)}
-              style={({ pressed }) => [
-                styles.filterChip,
-                isSelected && styles.filterChipSelected,
-                pressed && styles.filterChipPressed,
-              ]}
+              style={[styles.chip, active && styles.chipActive]}
             >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.filterChipText,
-                  isSelected && styles.filterChipTextSelected,
-                ]}
-              >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {option.label}
               </Text>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 function TransactionRow({ item }: { item: MercuryTransaction }) {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
   const amountColor =
     item.direction === "inflow"
       ? colors.positive
       : item.direction === "outflow"
-        ? colors.danger
+        ? colors.text
         : colors.text;
+  const sign = item.direction === "inflow" ? "+" : "";
   const title =
     item.counterparty.name ??
     item.bankDescription ??
@@ -278,192 +262,176 @@ function TransactionRow({ item }: { item: MercuryTransaction }) {
     "Transaction";
 
   return (
-    <View style={styles.card}>
-      <View style={styles.row}>
-        <View style={styles.rowCopy}>
-          <Text style={styles.itemTitle}>{title}</Text>
-          <Text style={styles.itemMeta}>
-            {item.profile.label} ·{" "}
-            {formatDateTime(item.postedAt ?? item.createdAt)}
-          </Text>
-        </View>
-        <Text style={[styles.amount, { color: amountColor }]}>
-          {formatCurrency(item.amount)}
+    <View style={styles.txRow}>
+      <View style={styles.txLeft}>
+        <Text style={styles.txTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.txMeta} numberOfLines={1}>
+          {item.profile.label} ·{" "}
+          {formatDateTime(item.postedAt ?? item.createdAt)}
         </Text>
       </View>
-
-      <View style={styles.detailRow}>
-        <Text
-          numberOfLines={1}
-          style={[styles.detailText, styles.detailTextPrimary]}
-        >
-          {titleCase(item.kind)} · {titleCase(item.status)}
+      <View style={styles.txRight}>
+        <Text style={[styles.txAmount, { color: amountColor }]}>
+          {sign}
+          {formatCurrency(item.amount)}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={[styles.detailText, styles.detailTextSecondary]}
-        >
-          {item.category.user ?? item.category.mercury ?? "Uncategorized"}
-        </Text>
+        <Text style={styles.txStatus}>{titleCase(item.status)}</Text>
       </View>
     </View>
   );
 }
 
-const getStyles = (colors: ReturnType<typeof getAppColors>) =>
-  StyleSheet.create({
+function getStyles() {
+  return StyleSheet.create({
     screen: {
       backgroundColor: colors.canvas,
     },
     content: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 28,
-    },
-    contentEmpty: {
-      flexGrow: 1,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 32,
     },
     listHeader: {
-      marginBottom: 14,
+      marginBottom: 12,
     },
-    card: {
-      gap: 10,
-      padding: 18,
-      borderRadius: 24,
+
+    // Filters
+    filterSection: {
+      borderRadius: 12,
       backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
+      paddingVertical: 4,
     },
-    noticeCard: {
-      borderColor: colors.danger,
-    },
-    filterCard: {
-      gap: 14,
-    },
-    filterEyebrow: {
-      color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
-    },
-    cardTitle: {
-      color: colors.text,
-      fontSize: 20,
-      fontWeight: "700",
-    },
-    copy: {
-      color: colors.meta,
-      fontSize: 15,
-      lineHeight: 22,
-    },
-    filterGroup: {
-      gap: 8,
+    filterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      gap: 12,
     },
     filterLabel: {
       color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1,
-      textTransform: "uppercase",
+      fontSize: 13,
+      fontWeight: "500",
+      width: 60,
     },
-    filterOptions: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
+    filterSeparator: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginLeft: 16,
     },
-    filterChip: {
-      minHeight: 36,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.canvas,
-      justifyContent: "center",
+    chipRow: {
+      gap: 6,
     },
-    filterChipSelected: {
-      borderColor: colors.accent,
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      backgroundColor: colors.cardAlt,
+    },
+    chipActive: {
       backgroundColor: colors.accentMuted,
     },
-    filterChipPressed: {
-      opacity: 0.82,
+    chipText: {
+      color: colors.meta,
+      fontSize: 13,
+      fontWeight: "500",
     },
-    filterChipText: {
-      color: colors.text,
-      fontSize: 14,
-      fontWeight: "600",
-      flexShrink: 1,
-    },
-    filterChipTextSelected: {
+    chipTextActive: {
       color: colors.accent,
+      fontWeight: "600",
     },
-    row: {
+
+    // Transaction rows
+    txRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
+      backgroundColor: colors.card,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
-    rowCopy: {
+    txLeft: {
       flex: 1,
-      gap: 4,
+      gap: 2,
     },
-    itemTitle: {
+    txRight: {
+      alignItems: "flex-end",
+      gap: 2,
+    },
+    txTitle: {
       color: colors.text,
-      fontSize: 16,
-      fontWeight: "700",
+      fontSize: 15,
+      fontWeight: "500",
     },
-    itemMeta: {
+    txMeta: {
       color: colors.meta,
       fontSize: 13,
-      lineHeight: 18,
     },
-    amount: {
-      fontSize: 16,
-      fontWeight: "700",
+    txAmount: {
+      fontSize: 15,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
     },
-    detailRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
-    },
-    detailText: {
+    txStatus: {
       color: colors.meta,
-      fontSize: 13,
-      lineHeight: 18,
+      fontSize: 12,
     },
-    detailTextPrimary: {
-      flex: 1,
-    },
-    detailTextSecondary: {
-      flexShrink: 1,
-      maxWidth: "44%",
-      textAlign: "right",
+
+    // Separator
+    separatorWrapper: {
+      backgroundColor: colors.card,
+      paddingLeft: 16,
     },
     separator: {
-      height: 14,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
     },
+
+    // Empty / error
+    emptySection: {
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: colors.card,
+      gap: 4,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    emptyBody: {
+      color: colors.meta,
+      fontSize: 13,
+    },
+    errorSection: {
+      marginTop: 12,
+      padding: 16,
+      borderRadius: 12,
+      backgroundColor: colors.card,
+    },
+    errorText: {
+      color: colors.danger,
+      fontSize: 15,
+    },
+
+    // Footer
     footer: {
       alignItems: "center",
-      paddingVertical: 8,
-      gap: 4,
+      paddingVertical: 16,
+      gap: 2,
     },
     footerText: {
       color: colors.meta,
-      fontSize: 13,
-      lineHeight: 18,
-    },
-    footerSubtle: {
-      color: colors.meta,
       fontSize: 12,
-      lineHeight: 16,
     },
     footerHint: {
       color: colors.meta,
-      fontSize: 12,
-      fontWeight: "600",
+      fontSize: 11,
       textTransform: "uppercase",
-      letterSpacing: 1,
+      letterSpacing: 0.5,
     },
   });
+}

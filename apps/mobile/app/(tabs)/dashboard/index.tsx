@@ -7,7 +7,6 @@ import {
   View,
 } from "react-native";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   formatCompactCurrency,
   formatCurrency,
@@ -19,14 +18,14 @@ import {
   type MercuryOverviewResponse,
   mercuryApi,
 } from "@/lib/mercury";
-import { getAppColors } from "@/lib/theme";
+import { appColors } from "@/lib/theme";
+
+const colors = appColors.dark;
+const styles = getStyles();
 
 const loadOverview = () => mercuryApi.getOverview();
 
 export default function DashboardScreen() {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
   const [data, setData] = useState<MercuryOverviewResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(true);
@@ -63,42 +62,45 @@ export default function DashboardScreen() {
         <RefreshControl
           onRefresh={() => void refresh()}
           refreshing={isRefreshing}
+          tintColor={colors.accent}
         />
       }
       showsVerticalScrollIndicator={false}
       style={styles.screen}
     >
-      <View style={[styles.card, styles.heroCard]}>
-        <Text style={styles.eyebrow}>Total cash</Text>
+      {/* Hero balance */}
+      <View style={styles.section}>
         <Text style={styles.heroValue}>
           {formatCompactCurrency(summary?.cashAvailable)}
         </Text>
-        <Text style={styles.copy}>
-          Personal and business Mercury balances in one read.
-        </Text>
-        <View style={styles.metricRow}>
-          <View style={[styles.metricTile, styles.metricTileSoft]}>
-            <Text style={styles.metricLabel}>Net position</Text>
-            <Text style={styles.metricValue}>
+        <Text style={styles.heroLabel}>Total cash</Text>
+      </View>
+
+      {/* Quick stats */}
+      <View style={styles.section}>
+        <View style={styles.statRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Net position</Text>
+            <Text style={styles.statValue}>
               {formatCurrency(summary?.netCurrent)}
             </Text>
           </View>
-          <View style={styles.metricTile}>
-            <Text style={styles.metricLabel}>Profiles</Text>
-            <Text style={styles.metricValue}>
+          <View style={styles.statSeparator} />
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Profiles</Text>
+            <Text style={styles.statValue}>
               {data?.data.profiles.length ?? 0}
             </Text>
           </View>
         </View>
-        <Text style={styles.meta}>
+        <Text style={styles.footnote}>
           Updated {formatDateTime(data?.meta.asOf ?? null)}
         </Text>
       </View>
 
       {error ? (
-        <View style={[styles.card, styles.noticeCard]}>
-          <Text style={styles.cardTitle}>Unable to load overview</Text>
-          <Text style={styles.copy}>{error}</Text>
+        <View style={styles.section}>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
@@ -110,225 +112,198 @@ export default function DashboardScreen() {
 }
 
 function ProfileCard({ profile }: { profile: MercuryOverviewProfile }) {
-  const colorScheme = useColorScheme();
-  const colors = getAppColors(colorScheme);
-  const styles = getStyles(colors);
-
   return (
-    <View style={styles.card}>
-      <View style={styles.row}>
-        <View style={styles.rowCopy}>
-          <Text style={styles.cardTitle}>{profile.profile.label}</Text>
-          <Text style={styles.meta}>
-            {profile.organization?.legalBusinessName}
-          </Text>
-        </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeLabel}>
-            {titleCase(profile.organization?.kind)}
-          </Text>
-        </View>
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
+        <Text style={styles.badge}>
+          {titleCase(profile.organization?.kind)}
+        </Text>
       </View>
+      {profile.organization?.legalBusinessName ? (
+        <Text style={styles.footnote}>
+          {profile.organization.legalBusinessName}
+        </Text>
+      ) : null}
 
-      <View style={styles.metricRow}>
-        <View style={styles.metricTile}>
-          <Text style={styles.metricLabel}>Cash</Text>
-          <Text style={styles.metricValue}>
+      {/* Balances */}
+      <View style={styles.statRow}>
+        <View style={styles.stat}>
+          <Text style={styles.statLabel}>Cash</Text>
+          <Text style={styles.statValue}>
             {formatCurrency(profile.data.summary.cashAvailable)}
           </Text>
         </View>
-        <View style={styles.metricTile}>
-          <Text style={styles.metricLabel}>Cards</Text>
-          <Text style={styles.metricValue}>
+        <View style={styles.statSeparator} />
+        <View style={styles.stat}>
+          <Text style={styles.statLabel}>Credit</Text>
+          <Text style={styles.statValue}>
             {profile.capabilities.credit.supported
               ? formatCurrency(profile.data.summary.creditCurrent)
-              : "Unavailable"}
+              : "N/A"}
           </Text>
         </View>
       </View>
 
-      <View style={styles.accountList}>
-        {profile.data.accounts.map((account) => (
-          <View key={account.id ?? account.name} style={styles.accountRow}>
-            <View style={styles.rowCopy}>
-              <Text style={styles.accountName}>{account.name}</Text>
-              <Text style={styles.accountMeta}>
-                {titleCase(account.kind)} •••{account.accountNumberLast4 ?? "—"}
+      {/* Account rows */}
+      {profile.data.accounts.map((account, index) => (
+        <View key={account.id ?? account.name}>
+          {index > 0 ? <View style={styles.rowSeparator} /> : null}
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{account.name}</Text>
+              <Text style={styles.rowSubtitle}>
+                {titleCase(account.kind)} •••
+                {account.accountNumberLast4 ?? "—"}
               </Text>
             </View>
-            <Text style={styles.accountBalance}>
+            <Text style={styles.rowValue}>
               {formatCurrency(account.balances.available)}
             </Text>
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
 
-      {profile.data.creditAccounts.length > 0 ? (
-        <View style={[styles.card, styles.innerCard]}>
-          <Text style={styles.cardTitle}>Credit</Text>
-          {profile.data.creditAccounts.map((account) => (
-            <View
-              key={account.id ?? account.createdAt}
-              style={styles.creditRow}
-            >
-              <View style={styles.rowCopy}>
-                <Text style={styles.accountName}>Mercury Card</Text>
-                <Text style={styles.accountMeta}>
-                  Current {formatCurrency(account.balances.current)}
-                </Text>
-              </View>
-              <Text style={styles.accountBalance}>
-                {formatCurrency(account.balances.available)}
+      {/* Credit accounts */}
+      {profile.data.creditAccounts.map((account, index) => (
+        <View key={account.id ?? `${profile.profile.id}-credit-${index}`}>
+          <View style={styles.rowSeparator} />
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>Mercury Card</Text>
+              <Text style={styles.rowSubtitle}>
+                Current {formatCurrency(account.balances.current)}
               </Text>
             </View>
-          ))}
+            <Text style={styles.rowValue}>
+              {formatCurrency(account.balances.available)}
+            </Text>
+          </View>
         </View>
-      ) : !profile.capabilities.credit.supported ? (
-        <View style={[styles.card, styles.innerCard]}>
-          <Text style={styles.cardTitle}>Credit</Text>
-          <Text style={styles.copy}>
+      ))}
+
+      {!profile.capabilities.credit.supported &&
+      profile.data.creditAccounts.length === 0 ? (
+        <>
+          <View style={styles.rowSeparator} />
+          <Text style={styles.footnote}>
             {profile.capabilities.credit.error?.message ??
-              "Credit balances are not available for this profile."}
+              "Credit not available for this profile."}
           </Text>
-        </View>
+        </>
       ) : null}
     </View>
   );
 }
 
-const getStyles = (colors: ReturnType<typeof getAppColors>) =>
-  StyleSheet.create({
+function getStyles() {
+  return StyleSheet.create({
     screen: {
       backgroundColor: colors.canvas,
     },
     content: {
-      gap: 16,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 28,
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 32,
     },
-    heroCard: {
-      backgroundColor: colors.cardAlt,
-    },
-    card: {
-      gap: 14,
-      padding: 18,
-      borderRadius: 24,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    innerCard: {
+    section: {
+      gap: 12,
       padding: 16,
-      borderRadius: 20,
-      backgroundColor: colors.cardAlt,
+      borderRadius: 12,
+      backgroundColor: colors.card,
     },
-    noticeCard: {
-      borderColor: colors.danger,
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
     },
-    eyebrow: {
-      color: colors.meta,
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 1.6,
-      textTransform: "uppercase",
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: "600",
+      flex: 1,
+    },
+    badge: {
+      color: colors.accent,
+      fontSize: 13,
+      fontWeight: "600",
     },
     heroValue: {
       color: colors.text,
-      fontSize: 40,
+      fontSize: 42,
       fontWeight: "700",
-      lineHeight: 42,
+      letterSpacing: -1,
+    },
+    heroLabel: {
+      color: colors.meta,
+      fontSize: 13,
+      fontWeight: "500",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    statRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    stat: {
+      flex: 1,
+      gap: 2,
+    },
+    statSeparator: {
+      width: 1,
+      height: 28,
+      backgroundColor: colors.border,
+      marginHorizontal: 16,
+    },
+    statLabel: {
+      color: colors.meta,
+      fontSize: 13,
+      fontWeight: "500",
+    },
+    statValue: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "600",
     },
     row: {
       flexDirection: "row",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      gap: 12,
-    },
-    rowCopy: {
-      flex: 1,
-      gap: 4,
-    },
-    badge: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: colors.accentMuted,
-    },
-    badgeLabel: {
-      color: colors.accent,
-      fontSize: 12,
-      fontWeight: "700",
-    },
-    metricRow: {
-      flexDirection: "row",
-      gap: 12,
-    },
-    metricTile: {
-      flex: 1,
-      gap: 4,
-      padding: 14,
-      borderRadius: 18,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    metricTileSoft: {
-      backgroundColor: colors.canvas,
-    },
-    metricLabel: {
-      color: colors.meta,
-      fontSize: 13,
-      fontWeight: "600",
-    },
-    metricValue: {
-      color: colors.text,
-      fontSize: 20,
-      fontWeight: "700",
-    },
-    cardTitle: {
-      color: colors.text,
-      fontSize: 20,
-      fontWeight: "700",
-    },
-    copy: {
-      color: colors.meta,
-      fontSize: 15,
-      lineHeight: 22,
-    },
-    meta: {
-      color: colors.meta,
-      fontSize: 13,
-      lineHeight: 18,
-    },
-    accountList: {
-      gap: 10,
-    },
-    accountRow: {
-      flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
+      paddingVertical: 2,
     },
-    creditRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 12,
+    rowText: {
+      flex: 1,
+      gap: 1,
     },
-    accountName: {
+    rowTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    rowSubtitle: {
+      color: colors.meta,
+      fontSize: 13,
+    },
+    rowValue: {
       color: colors.text,
       fontSize: 15,
       fontWeight: "600",
+      fontVariant: ["tabular-nums"],
     },
-    accountMeta: {
+    rowSeparator: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+    },
+    footnote: {
       color: colors.meta,
       fontSize: 13,
-      lineHeight: 18,
     },
-    accountBalance: {
-      color: colors.text,
-      fontSize: 16,
-      fontWeight: "700",
+    errorText: {
+      color: colors.danger,
+      fontSize: 15,
     },
   });
+}
