@@ -54,7 +54,7 @@ export const getTopBarOptions = (_colorScheme?: string | null) => {
 
   return {
     contentStyle: {
-      backgroundColor: colors.canvas,
+      backgroundColor: "transparent",
     },
     headerBackTitleVisible: false,
     headerLargeTitle: true,

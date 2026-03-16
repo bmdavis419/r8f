@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { GlassCard, ScreenGlow } from "@/components/ui/glass";
 import {
   ApiUnauthorizedError,
   onApiUnauthorized,
@@ -202,8 +203,9 @@ export function PasscodeGate() {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <ScreenGlow />
       <View style={styles.container}>
-        <View style={styles.content}>
+        <GlassCard>
           <Text style={styles.title}>r8f</Text>
           <Text style={styles.subtitle}>Enter passcode to continue</Text>
 
@@ -243,7 +245,7 @@ export function PasscodeGate() {
               {isSubmitting ? "Checking..." : "Unlock"}
             </Text>
           </Pressable>
-        </View>
+        </GlassCard>
       </View>
     </SafeAreaView>
   );
@@ -252,11 +254,12 @@ export function PasscodeGate() {
 export function PasscodeBootScreen() {
   return (
     <SafeAreaView style={styles.screen}>
+      <ScreenGlow />
       <View style={styles.container}>
-        <View style={styles.content}>
+        <GlassCard>
           <Text style={styles.title}>r8f</Text>
           <Text style={styles.subtitle}>Reconnecting...</Text>
-        </View>
+        </GlassCard>
       </View>
     </SafeAreaView>
   );
@@ -296,10 +299,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
   },
-  content: {
-    gap: 16,
-    alignItems: "stretch",
-  },
   title: {
     color: colors.text,
     fontSize: 32,
@@ -316,7 +315,7 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderRadius: 12,
-    backgroundColor: colors.card,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     color: colors.text,
     fontSize: 17,
     paddingHorizontal: 16,

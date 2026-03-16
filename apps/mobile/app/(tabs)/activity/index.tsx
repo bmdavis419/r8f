@@ -1,5 +1,5 @@
 import { FlashList } from "@shopify/flash-list";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -9,6 +9,8 @@ import {
   View,
 } from "react-native";
 
+import { BarChart } from "@/components/ui/charts";
+import { GlassCard, ScreenGlow } from "@/components/ui/glass";
 import { formatCurrency, formatDateTime, titleCase } from "@/lib/format";
 import {
   type MercuryTransaction,
@@ -33,6 +35,96 @@ const directionOptions = [
   { label: "Inflow", value: "inflow" },
   { label: "Outflow", value: "outflow" },
 ] as const;
+
+const monthShort = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** Group transactions into recent weeks and compute inflow/outflow per week. */
+function buildWeeklyCashFlow(items: MercuryTransaction[]) {
+  const validItems = items.filter(
+    (t) => t.amount != null && t.status !== "failed",
+  );
+
+  if (validItems.length === 0) return [];
+
+  // Determine the date range — group into calendar weeks (Mon–Sun)
+  const now = new Date();
+  const weeks: {
+    label: string;
+    positive: number;
+    negative: number;
+    start: Date;
+  }[] = [];
+
+  // Build 6 weeks going back from current week
+  for (let w = 5; w >= 0; w--) {
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() - w * 7 + 1); // Monday
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const label =
+      w === 0
+        ? "This wk"
+        : w === 1
+          ? "Last wk"
+          : `${monthShort[weekStart.getMonth()]} ${weekStart.getDate()}`;
+
+    weeks.push({
+      label,
+      positive: 0,
+      negative: 0,
+      start: weekStart,
+    });
+  }
+
+  for (const tx of validItems) {
+    const txDate = new Date(tx.postedAt ?? tx.createdAt ?? "");
+    if (Number.isNaN(txDate.getTime())) continue;
+
+    for (let w = 0; w < weeks.length; w++) {
+      const weekStart = weeks[w].start;
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+
+      if (txDate >= weekStart && txDate < weekEnd) {
+        const amount = Math.abs(tx.amount ?? 0);
+        if (tx.direction === "inflow") {
+          weeks[w].positive += amount;
+        } else if (tx.direction === "outflow") {
+          weeks[w].negative += amount;
+        }
+        break;
+      }
+    }
+  }
+
+  // Only return weeks that have any data, but keep surrounding empty weeks for context
+  const firstWithData = weeks.findIndex(
+    (w) => w.positive > 0 || w.negative > 0,
+  );
+  if (firstWithData === -1) return [];
+
+  return weeks.slice(firstWithData).map(({ label, positive, negative }) => ({
+    label,
+    positive,
+    negative,
+  }));
+}
 
 export default function ActivityScreen() {
   const [data, setData] = useState<MercuryTransactionsResponse | null>(null);
@@ -70,7 +162,24 @@ export default function ActivityScreen() {
     void loadTransactions("initial");
   }, [loadTransactions]);
 
-  const items = data?.data.items ?? [];
+  const items = useMemo(() => data?.data.items ?? [], [data]);
+
+  const weeklyCashFlow = useMemo(() => buildWeeklyCashFlow(items), [items]);
+
+  // Compute summary stats
+  const flowSummary = useMemo(() => {
+    const posted = items.filter(
+      (t) => t.amount != null && t.status !== "failed",
+    );
+    const inflow = posted
+      .filter((t) => t.direction === "inflow")
+      .reduce((s, t) => s + Math.abs(t.amount ?? 0), 0);
+    const outflow = posted
+      .filter((t) => t.direction === "outflow")
+      .reduce((s, t) => s + Math.abs(t.amount ?? 0), 0);
+    return { inflow, outflow, net: inflow - outflow };
+  }, [items]);
+
   const profileOptions = [
     { label: "All", value: "all" },
     ...Array.from(
@@ -100,109 +209,161 @@ export default function ActivityScreen() {
   }, [selectedDirection, selectedProfile, selectedStatus]);
 
   return (
-    <FlashList
-      automaticallyAdjustContentInsets
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      data={visibleItems}
-      ItemSeparatorComponent={() => (
-        <View style={styles.separatorWrapper}>
-          <View style={styles.separator} />
-        </View>
-      )}
-      keyExtractor={(item, index) =>
-        item.id ??
-        [
-          item.accountId,
-          item.createdAt,
-          item.amount,
-          item.status,
-          item.kind,
-          index,
-        ].join("-")
-      }
-      keyboardDismissMode="on-drag"
-      ListEmptyComponent={
-        error ? null : isLoading ? (
-          <View style={styles.emptySection}>
-            <Text style={styles.emptyTitle}>Loading activity...</Text>
+    <View style={styles.screen}>
+      <ScreenGlow />
+      <FlashList
+        automaticallyAdjustContentInsets
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        data={visibleItems}
+        ItemSeparatorComponent={() => (
+          <View style={styles.separatorWrapper}>
+            <View style={styles.separator} />
           </View>
-        ) : (
-          <View style={styles.emptySection}>
-            <Text style={styles.emptyTitle}>No activity yet</Text>
-            <Text style={styles.emptyBody}>
-              Recent transactions will appear here.
-            </Text>
-          </View>
-        )
-      }
-      ListFooterComponent={
-        !error && filteredItems.length > 0 ? (
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {visibleItems.length} of {filteredItems.length}
-              {filteredItems.length !== items.length
-                ? ` (${items.length} total)`
-                : ""}
-            </Text>
-            {canLoadMore ? (
-              <Text style={styles.footerHint}>Scroll for more</Text>
-            ) : null}
-          </View>
-        ) : null
-      }
-      ListHeaderComponent={
-        <>
-          {/* Filters */}
-          <View style={styles.filterSection}>
-            <FilterRow
-              label="Profile"
-              onSelect={setSelectedProfile}
-              options={profileOptions}
-              selectedValue={selectedProfile}
-            />
-            <View style={styles.filterSeparator} />
-            <FilterRow
-              label="Status"
-              onSelect={setSelectedStatus}
-              options={statusOptions}
-              selectedValue={selectedStatus}
-            />
-            <View style={styles.filterSeparator} />
-            <FilterRow
-              label="Direction"
-              onSelect={setSelectedDirection}
-              options={directionOptions}
-              selectedValue={selectedDirection}
-            />
-          </View>
-
-          {error ? (
-            <View style={styles.errorSection}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-        </>
-      }
-      ListHeaderComponentStyle={styles.listHeader}
-      onEndReached={() => {
-        if (canLoadMore) {
-          setVisibleCount((count) =>
-            Math.min(count + pageSize, filteredItems.length),
-          );
+        )}
+        keyExtractor={(item, index) =>
+          item.id ??
+          [
+            item.accountId,
+            item.createdAt,
+            item.amount,
+            item.status,
+            item.kind,
+            index,
+          ].join("-")
         }
-      }}
-      onEndReachedThreshold={0.4}
-      onRefresh={
-        Platform.OS === "web"
-          ? undefined
-          : () => void loadTransactions("refresh")
-      }
-      renderItem={({ item }) => <TransactionRow item={item} />}
-      refreshing={isRefreshing}
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    />
+        keyboardDismissMode="on-drag"
+        ListEmptyComponent={
+          error ? null : isLoading ? (
+            <GlassCard>
+              <Text style={styles.emptyTitle}>Loading activity...</Text>
+            </GlassCard>
+          ) : (
+            <GlassCard>
+              <Text style={styles.emptyTitle}>No activity yet</Text>
+              <Text style={styles.emptyBody}>
+                Recent transactions will appear here.
+              </Text>
+            </GlassCard>
+          )
+        }
+        ListFooterComponent={
+          !error && filteredItems.length > 0 ? (
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                {visibleItems.length} of {filteredItems.length}
+                {filteredItems.length !== items.length
+                  ? ` (${items.length} total)`
+                  : ""}
+              </Text>
+              {canLoadMore ? (
+                <Text style={styles.footerHint}>Scroll for more</Text>
+              ) : null}
+            </View>
+          ) : null
+        }
+        ListHeaderComponent={
+          <>
+            {/* Cash flow chart */}
+            {weeklyCashFlow.length > 0 ? (
+              <GlassCard>
+                <Text style={styles.chartTitle}>Cash flow</Text>
+                <View style={styles.flowStats}>
+                  <View style={styles.flowStat}>
+                    <Text style={styles.flowStatLabel}>In</Text>
+                    <Text
+                      style={[styles.flowStatValue, { color: colors.positive }]}
+                    >
+                      {formatCurrency(flowSummary.inflow)}
+                    </Text>
+                  </View>
+                  <View style={styles.flowStat}>
+                    <Text style={styles.flowStatLabel}>Out</Text>
+                    <Text style={styles.flowStatValue}>
+                      {formatCurrency(flowSummary.outflow)}
+                    </Text>
+                  </View>
+                  <View style={styles.flowStat}>
+                    <Text style={styles.flowStatLabel}>Net</Text>
+                    <Text
+                      style={[
+                        styles.flowStatValue,
+                        {
+                          color:
+                            flowSummary.net >= 0
+                              ? colors.positive
+                              : colors.danger,
+                        },
+                      ]}
+                    >
+                      {flowSummary.net >= 0 ? "+" : ""}
+                      {formatCurrency(flowSummary.net)}
+                    </Text>
+                  </View>
+                </View>
+                <BarChart
+                  data={weeklyCashFlow}
+                  height={100}
+                  positiveColor={colors.positive}
+                  negativeColor="rgba(255, 255, 255, 0.18)"
+                  positiveLabel="Inflow"
+                  negativeLabel="Outflow"
+                />
+              </GlassCard>
+            ) : null}
+
+            {/* Filters */}
+            <GlassCard
+              style={weeklyCashFlow.length > 0 ? { marginTop: 12 } : undefined}
+            >
+              <FilterRow
+                label="Profile"
+                onSelect={setSelectedProfile}
+                options={profileOptions}
+                selectedValue={selectedProfile}
+              />
+              <View style={styles.filterSeparator} />
+              <FilterRow
+                label="Status"
+                onSelect={setSelectedStatus}
+                options={statusOptions}
+                selectedValue={selectedStatus}
+              />
+              <View style={styles.filterSeparator} />
+              <FilterRow
+                label="Direction"
+                onSelect={setSelectedDirection}
+                options={directionOptions}
+                selectedValue={selectedDirection}
+              />
+            </GlassCard>
+
+            {error ? (
+              <GlassCard style={{ marginTop: 12 }}>
+                <Text style={styles.errorText}>{error}</Text>
+              </GlassCard>
+            ) : null}
+          </>
+        }
+        ListHeaderComponentStyle={styles.listHeader}
+        onEndReached={() => {
+          if (canLoadMore) {
+            setVisibleCount((count) =>
+              Math.min(count + pageSize, filteredItems.length),
+            );
+          }
+        }}
+        onEndReachedThreshold={0.4}
+        onRefresh={
+          Platform.OS === "web"
+            ? undefined
+            : () => void loadTransactions("refresh")
+        }
+        renderItem={({ item }) => <TransactionRow item={item} />}
+        refreshing={isRefreshing}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 }
 
@@ -248,11 +409,7 @@ function FilterRow({
 
 function TransactionRow({ item }: { item: MercuryTransaction }) {
   const amountColor =
-    item.direction === "inflow"
-      ? colors.positive
-      : item.direction === "outflow"
-        ? colors.text
-        : colors.text;
+    item.direction === "inflow" ? colors.positive : colors.text;
   const sign = item.direction === "inflow" ? "+" : "";
   const title =
     item.counterparty.name ??
@@ -286,6 +443,7 @@ function TransactionRow({ item }: { item: MercuryTransaction }) {
 function getStyles() {
   return StyleSheet.create({
     screen: {
+      flex: 1,
       backgroundColor: colors.canvas,
     },
     content: {
@@ -297,17 +455,35 @@ function getStyles() {
       marginBottom: 12,
     },
 
-    // Filters
-    filterSection: {
-      borderRadius: 12,
-      backgroundColor: colors.card,
-      paddingVertical: 4,
+    // Chart header
+    chartTitle: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: "600",
     },
+    flowStats: {
+      flexDirection: "row",
+      gap: 16,
+    },
+    flowStat: {
+      gap: 2,
+    },
+    flowStatLabel: {
+      color: colors.meta,
+      fontSize: 12,
+      fontWeight: "500",
+    },
+    flowStatValue: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
+    },
+
+    // Filters (inside GlassCard, so no background needed)
     filterRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 10,
       gap: 12,
     },
     filterLabel: {
@@ -318,8 +494,7 @@ function getStyles() {
     },
     filterSeparator: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
-      marginLeft: 16,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
     },
     chipRow: {
       gap: 6,
@@ -328,7 +503,7 @@ function getStyles() {
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 8,
-      backgroundColor: colors.cardAlt,
+      backgroundColor: "rgba(255, 255, 255, 0.06)",
     },
     chipActive: {
       backgroundColor: colors.accentMuted,
@@ -343,13 +518,13 @@ function getStyles() {
       fontWeight: "600",
     },
 
-    // Transaction rows
+    // Transaction rows — these sit inside a continuous glass band
     txRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
-      backgroundColor: colors.card,
+      backgroundColor: "rgba(28, 28, 30, 0.65)",
       paddingHorizontal: 16,
       paddingVertical: 12,
     },
@@ -382,21 +557,15 @@ function getStyles() {
 
     // Separator
     separatorWrapper: {
-      backgroundColor: colors.card,
+      backgroundColor: "rgba(28, 28, 30, 0.65)",
       paddingLeft: 16,
     },
     separator: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
     },
 
     // Empty / error
-    emptySection: {
-      padding: 16,
-      borderRadius: 12,
-      backgroundColor: colors.card,
-      gap: 4,
-    },
     emptyTitle: {
       color: colors.text,
       fontSize: 15,
@@ -405,12 +574,6 @@ function getStyles() {
     emptyBody: {
       color: colors.meta,
       fontSize: 13,
-    },
-    errorSection: {
-      marginTop: 12,
-      padding: 16,
-      borderRadius: 12,
-      backgroundColor: colors.card,
     },
     errorText: {
       color: colors.danger,

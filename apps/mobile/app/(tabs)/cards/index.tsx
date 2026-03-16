@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 
+import { GlassCard, ScreenGlow } from "@/components/ui/glass";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
   type MercuryCreditAccount,
@@ -76,113 +77,118 @@ export default function CardsScreen() {
   const summary = data?.data.summary;
 
   return (
-    <ScrollView
-      automaticallyAdjustContentInsets
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      refreshControl={
-        <RefreshControl
-          onRefresh={() => void refresh()}
-          refreshing={isRefreshing}
-          tintColor={colors.accent}
-        />
-      }
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      {/* Summary */}
-      <View style={styles.section}>
-        <View style={styles.statRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Current balance</Text>
-            <Text style={styles.statValue}>
-              {formatCurrency(summary?.creditCurrent)}
-            </Text>
-          </View>
-          <View style={styles.statSeparator} />
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Available</Text>
-            <Text style={styles.statValue}>
-              {formatCurrency(summary?.creditAvailable)}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.footnote}>
-          Updated {formatDateTime(data?.meta.asOf ?? null)}
-        </Text>
-      </View>
-
-      {error ? (
-        <View style={styles.section}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
-
-      {/* Apple Card note */}
-      <View style={styles.section}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.sectionTitle}>Apple Card</Text>
-          <Text style={styles.badge}>Unavailable</Text>
-        </View>
-        <Text style={styles.footnote}>
-          {Platform.OS === "ios"
-            ? "Requires a production build with FinanceKit entitlement."
-            : "Apple Card data is iPhone-only via FinanceKit."}
-        </Text>
-      </View>
-
-      {/* Mercury cards */}
-      {mercuryCards.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mercury</Text>
-          {mercuryCards.map(({ account, organizationName, profile }, index) => (
-            <View key={account.id ?? `${profile.id}-${account.createdAt}`}>
-              {index > 0 ? <View style={styles.rowDivider} /> : null}
-              <View style={styles.cardRow}>
-                <View style={styles.cardRowLeft}>
-                  <Text style={styles.rowTitle}>Mercury Card</Text>
-                  <Text style={styles.rowSubtitle}>
-                    {profile.label}
-                    {organizationName ? ` · ${organizationName}` : ""}
-                  </Text>
-                </View>
-                <View style={styles.cardRowRight}>
-                  <Text style={styles.rowValue}>
-                    {formatCurrency(account.balances.current)}
-                  </Text>
-                  <Text style={styles.rowSubtitle}>
-                    {formatCurrency(account.balances.available)} avail.
-                  </Text>
-                </View>
-              </View>
+    <View style={styles.screen}>
+      <ScreenGlow />
+      <ScrollView
+        automaticallyAdjustContentInsets
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <RefreshControl
+            onRefresh={() => void refresh()}
+            refreshing={isRefreshing}
+            tintColor={colors.accent}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Summary */}
+        <GlassCard>
+          <View style={styles.statRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>Current balance</Text>
+              <Text style={styles.statValue}>
+                {formatCurrency(summary?.creditCurrent)}
+              </Text>
             </View>
-          ))}
-        </View>
-      ) : (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mercury</Text>
+            <View style={styles.statSeparator} />
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>Available</Text>
+              <Text style={styles.statValue}>
+                {formatCurrency(summary?.creditAvailable)}
+              </Text>
+            </View>
+          </View>
           <Text style={styles.footnote}>
-            No Mercury credit accounts found across connected profiles.
+            Updated {formatDateTime(data?.meta.asOf ?? null)}
           </Text>
-        </View>
-      )}
+        </GlassCard>
 
-      {unsupportedProfiles.map((profile) => (
-        <View key={profile.profile.id} style={styles.section}>
-          <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
+        {error ? (
+          <GlassCard>
+            <Text style={styles.errorText}>{error}</Text>
+          </GlassCard>
+        ) : null}
+
+        {/* Apple Card note */}
+        <GlassCard>
+          <View style={styles.rowBetween}>
+            <Text style={styles.sectionTitle}>Apple Card</Text>
+            <Text style={styles.badge}>Unavailable</Text>
+          </View>
           <Text style={styles.footnote}>
-            {profile.capabilities.credit.error?.message ??
-              "Credit data is not enabled for this profile."}
+            {Platform.OS === "ios"
+              ? "Requires a production build with FinanceKit entitlement."
+              : "Apple Card data is iPhone-only via FinanceKit."}
           </Text>
-        </View>
-      ))}
-    </ScrollView>
+        </GlassCard>
+
+        {/* Mercury cards */}
+        {mercuryCards.length > 0 ? (
+          <GlassCard>
+            <Text style={styles.sectionTitle}>Mercury</Text>
+            {mercuryCards.map(
+              ({ account, organizationName, profile }, index) => (
+                <View key={account.id ?? `${profile.id}-${account.createdAt}`}>
+                  {index > 0 ? <View style={styles.rowDivider} /> : null}
+                  <View style={styles.cardRow}>
+                    <View style={styles.cardRowLeft}>
+                      <Text style={styles.rowTitle}>Mercury Card</Text>
+                      <Text style={styles.rowSubtitle}>
+                        {profile.label}
+                        {organizationName ? ` · ${organizationName}` : ""}
+                      </Text>
+                    </View>
+                    <View style={styles.cardRowRight}>
+                      <Text style={styles.rowValue}>
+                        {formatCurrency(account.balances.current)}
+                      </Text>
+                      <Text style={styles.rowSubtitle}>
+                        {formatCurrency(account.balances.available)} avail.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ),
+            )}
+          </GlassCard>
+        ) : (
+          <GlassCard>
+            <Text style={styles.sectionTitle}>Mercury</Text>
+            <Text style={styles.footnote}>
+              No Mercury credit accounts found across connected profiles.
+            </Text>
+          </GlassCard>
+        )}
+
+        {unsupportedProfiles.map((profile) => (
+          <GlassCard key={profile.profile.id}>
+            <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
+            <Text style={styles.footnote}>
+              {profile.capabilities.credit.error?.message ??
+                "Credit data is not enabled for this profile."}
+            </Text>
+          </GlassCard>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 function getStyles() {
   return StyleSheet.create({
     screen: {
+      flex: 1,
       backgroundColor: colors.canvas,
     },
     content: {
@@ -190,12 +196,6 @@ function getStyles() {
       paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 32,
-    },
-    section: {
-      gap: 12,
-      padding: 16,
-      borderRadius: 12,
-      backgroundColor: colors.card,
     },
     sectionTitle: {
       color: colors.text,
@@ -224,7 +224,7 @@ function getStyles() {
     statSeparator: {
       width: 1,
       height: 28,
-      backgroundColor: colors.border,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
       marginHorizontal: 16,
     },
     statLabel: {
@@ -268,7 +268,7 @@ function getStyles() {
     },
     rowDivider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
     },
     footnote: {
       color: colors.meta,

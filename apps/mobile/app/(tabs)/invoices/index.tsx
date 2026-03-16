@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 
+import { GlassCard, ScreenGlow } from "@/components/ui/glass";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
 import { type MercuryInvoicesResponse, mercuryApi } from "@/lib/mercury";
 import { appColors } from "@/lib/theme";
@@ -44,77 +45,80 @@ export default function InvoicesScreen() {
   const items = data?.data.items ?? [];
 
   return (
-    <ScrollView
-      automaticallyAdjustContentInsets
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      refreshControl={
-        <RefreshControl
-          onRefresh={() => void refresh()}
-          refreshing={isRefreshing}
-          tintColor={colors.accent}
-        />
-      }
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      {error ? (
-        <View style={styles.section}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+    <View style={styles.screen}>
+      <ScreenGlow />
+      <ScrollView
+        automaticallyAdjustContentInsets
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={
+          <RefreshControl
+            onRefresh={() => void refresh()}
+            refreshing={isRefreshing}
+            tintColor={colors.accent}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {error ? (
+          <GlassCard>
+            <Text style={styles.errorText}>{error}</Text>
+          </GlassCard>
+        ) : null}
 
-      {items.length > 0 ? (
-        <View style={styles.section}>
-          {items.map((invoice, index) => (
-            <View key={invoice.id ?? invoice.invoiceNumber}>
-              {index > 0 ? <View style={styles.rowDivider} /> : null}
-              <View style={styles.row}>
-                <View style={styles.rowLeft}>
-                  <Text style={styles.rowTitle}>
-                    {invoice.customer?.name ?? invoice.profile.label}
-                  </Text>
-                  <Text style={styles.rowSubtitle}>
-                    #{invoice.invoiceNumber ?? "—"} · Due{" "}
-                    {formatDate(invoice.dueDate)}
-                  </Text>
-                </View>
-                <View style={styles.rowRight}>
-                  <Text style={styles.rowValue}>
-                    {formatCurrency(invoice.amount)}
-                  </Text>
-                  <Text style={styles.rowStatus}>
-                    {titleCase(invoice.status)}
-                  </Text>
+        {items.length > 0 ? (
+          <GlassCard>
+            {items.map((invoice, index) => (
+              <View key={invoice.id ?? invoice.invoiceNumber}>
+                {index > 0 ? <View style={styles.rowDivider} /> : null}
+                <View style={styles.row}>
+                  <View style={styles.rowLeft}>
+                    <Text style={styles.rowTitle}>
+                      {invoice.customer?.name ?? invoice.profile.label}
+                    </Text>
+                    <Text style={styles.rowSubtitle}>
+                      #{invoice.invoiceNumber ?? "—"} · Due{" "}
+                      {formatDate(invoice.dueDate)}
+                    </Text>
+                  </View>
+                  <View style={styles.rowRight}>
+                    <Text style={styles.rowValue}>
+                      {formatCurrency(invoice.amount)}
+                    </Text>
+                    <Text style={styles.rowStatus}>
+                      {titleCase(invoice.status)}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
-      ) : (
-        data?.data.profiles.map((profile) => (
-          <View key={profile.profile.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
-            <Text style={styles.footnote}>
-              {profile.invoices.supported
-                ? "No outstanding invoices."
-                : (profile.invoices.error?.message ??
-                  "Invoices are not available for this profile.")}
-            </Text>
-          </View>
-        ))
-      )}
+            ))}
+          </GlassCard>
+        ) : (
+          data?.data.profiles.map((profile) => (
+            <GlassCard key={profile.profile.id}>
+              <Text style={styles.sectionTitle}>{profile.profile.label}</Text>
+              <Text style={styles.footnote}>
+                {profile.invoices.supported
+                  ? "No outstanding invoices."
+                  : (profile.invoices.error?.message ??
+                    "Invoices are not available for this profile.")}
+              </Text>
+            </GlassCard>
+          ))
+        )}
 
-      {data?.meta.note ? (
-        <Text style={styles.footerNote}>{data.meta.note}</Text>
-      ) : null}
-    </ScrollView>
+        {data?.meta.note ? (
+          <Text style={styles.footerNote}>{data.meta.note}</Text>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
 function getStyles() {
   return StyleSheet.create({
     screen: {
+      flex: 1,
       backgroundColor: colors.canvas,
     },
     content: {
@@ -122,12 +126,6 @@ function getStyles() {
       paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 32,
-    },
-    section: {
-      gap: 12,
-      padding: 16,
-      borderRadius: 12,
-      backgroundColor: colors.card,
     },
     sectionTitle: {
       color: colors.text,
@@ -170,7 +168,7 @@ function getStyles() {
     },
     rowDivider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
     },
     footnote: {
       color: colors.meta,
